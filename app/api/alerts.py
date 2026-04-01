@@ -1,7 +1,8 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from uuid import UUID
+from datetime import datetime
 
 from app.db.database import get_db
 from app.schemas.alert import AlertCreate, AlertResponse
@@ -24,11 +25,23 @@ def create_alert(
 def read_alerts(
     skip: int = 0,
     limit: int = 100,
+    camera_id: Optional[UUID] = None,
+    alert_status: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-
-    return crud_alert.get_alerts(db, skip=skip, limit=limit)
+    alerts = crud_alert.get_alerts(
+        db,
+        skip=skip,
+        limit=limit,
+        camera_id=camera_id,
+        status=alert_status,
+        date_from=date_from,
+        date_to=date_to
+    )
+    return alerts
 
 @router.get("/{alert_id}", response_model=AlertResponse)
 def read_alert(
@@ -41,3 +54,14 @@ def read_alert(
     if db_alert is None:
         raise HTTPException(status_code=404, detail="Alerta no encontrada")
     return db_alert
+
+@router.delete("/{alert_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_alert(
+    alert_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    deleted = crud_alert.delete_alert(db, alert_id=alert_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Alerta no encontrada")
+    return None

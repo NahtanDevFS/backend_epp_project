@@ -44,7 +44,7 @@ class Camera(Base):
     status = Column(Enum(CameraStatus), default=CameraStatus.INACTIVE)
     last_online = Column(DateTime, nullable=True)
 
-    alerts = relationship("Alert", back_populates="camera")
+    alerts = relationship("Alert", back_populates="camera", cascade="all, delete-orphan")
 
 class Alert(Base):
     __tablename__ = "alerts"

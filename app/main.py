@@ -13,6 +13,7 @@ app = FastAPI(
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://frontend-proyecto-inteligencia-arti.vercel.app"
 ]
 
 app.add_middleware(
@@ -38,3 +39,9 @@ app.include_router(alerts.router)
 @app.get("/")
 async def root():
     return {"message": "API de Vision Guard funcionando correctamente"}
+
+#comando para levantar el servidor
+#uvicorn app.main:app --reload
+
+#comando del tunnel de ngrok
+#ngrok http --domain=topologic-quarrelingly-terri.ngrok-free.app 8000

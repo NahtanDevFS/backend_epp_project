@@ -93,7 +93,13 @@ async def video_stream_endpoint(websocket: WebSocket, camera_id: UUID, token: st
         if not stream_source.startswith(("http://", "https://", "rtsp://")):
             stream_source = f"http://{stream_source}"
 
-    cap = ThreadedCamera(stream_source)
+    try:
+        cap = await asyncio.to_thread(ThreadedCamera, stream_source)
+    except Exception as e:
+        await websocket.send_json({"status": "error", "message": f"Fallo crítico al conectar cámara: {e}"})
+        await websocket.close()
+        db.close()
+        return
 
     ppe_detector = PPEDetector()
     incident_manager = IncidentManager()
@@ -102,16 +108,22 @@ async def video_stream_endpoint(websocket: WebSocket, camera_id: UUID, token: st
         while True:
             ret, frame = cap.read()
             if not ret or frame is None:
-                await websocket.send_json({"status": "error", "message": "Señal de video perdida"})
+                await websocket.send_json(
+                    {"status": "error", "message": "Señal de video perdida o cámara fuera de línea"})
                 await asyncio.sleep(2)
-                cap.release()
-                cap = ThreadedCamera(stream_source)
+
+                await asyncio.to_thread(cap.release)
+                try:
+                    cap = await asyncio.to_thread(ThreadedCamera, stream_source)
+                except Exception:
+                    pass
                 continue
 
             start_time = time.time()
             orig_height, orig_width, _ = frame.shape
 
-            raw_detections = ppe_detector.detect_objects(frame)
+            raw_detections = await asyncio.to_thread(ppe_detector.detect_objects, frame)
+
             processed_detections = incident_manager.process_frame_detections(raw_detections)
 
             scale_x = 640 / orig_width
@@ -129,17 +141,21 @@ async def video_stream_endpoint(websocket: WebSocket, camera_id: UUID, token: st
                 if det.get("trigger_alert") and camera:
                     filename = f"{uuid.uuid4()}.jpg"
                     filepath = os.path.join("static/evidences", filename)
-                    cv2.imwrite(filepath, frame)
+
+                    await asyncio.to_thread(cv2.imwrite, filepath, frame)
+
+                    missing_details = []
+                    if det["missing_epp"]["helmet"]:
+                        missing_details.append(AlertDetailCreate(epp_type=EPPClass.HELMET, is_missing=True))
+                    if det["missing_epp"]["vest"]:
+                        missing_details.append(AlertDetailCreate(epp_type=EPPClass.VEST, is_missing=True))
 
                     alert_data = AlertCreate(
                         camera_id=camera.id,
                         evidence_url=f"/static/evidences/{filename}",
                         duration_seconds=10,
                         status=AlertStatus.PENDING,
-                        details=[
-                            AlertDetailCreate(epp_type=EPPClass.HELMET, is_missing=det["missing_epp"]["helmet"]),
-                            AlertDetailCreate(epp_type=EPPClass.VEST, is_missing=det["missing_epp"]["vest"])
-                        ]
+                        details=missing_details
                     )
                     crud_alert.create_alert(db=db, alert=alert_data)
 
@@ -165,5 +181,5 @@ async def video_stream_endpoint(websocket: WebSocket, camera_id: UUID, token: st
         print(f"Error inesperado en WebSocket ({camera_id}): {e}")
     finally:
         incident_manager.trackers.clear()
-        cap.release()
+        await asyncio.to_thread(cap.release)
         db.close()
