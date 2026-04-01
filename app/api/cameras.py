@@ -8,6 +8,7 @@ from app.schemas.camera import CameraCreate, CameraResponse
 from app.crud import camera as crud_camera
 from app.api.deps import get_current_user
 from app.db.models import User
+from app.schemas.camera import CameraUpdate
 
 router = APIRouter(prefix="/cameras", tags=["Cameras"])
 
@@ -27,9 +28,7 @@ def read_cameras(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Obtiene la lista de cámaras registradas.
-    """
+
     cameras = crud_camera.get_cameras(db, skip=skip, limit=limit)
     return cameras
 
@@ -44,3 +43,27 @@ def read_camera(
     if db_camera is None:
         raise HTTPException(status_code=404, detail="Cámara no encontrada")
     return db_camera
+
+@router.put("/{camera_id}", response_model=CameraResponse)
+def update_camera(
+    camera_id: UUID,
+    camera_in: CameraUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    db_camera = crud_camera.get_camera(db, camera_id=camera_id)
+    if not db_camera:
+        raise HTTPException(status_code=404, detail="Cámara no encontrada")
+    return crud_camera.update_camera(db=db, camera_id=camera_id, camera_update=camera_in)
+
+@router.delete("/{camera_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_camera(
+    camera_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    db_camera = crud_camera.get_camera(db, camera_id=camera_id)
+    if not db_camera:
+        raise HTTPException(status_code=404, detail="Cámara no encontrada")
+    crud_camera.delete_camera(db=db, camera_id=camera_id)
+    return None

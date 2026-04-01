@@ -17,3 +17,8 @@ class CameraResponse(CameraBase):
     last_online: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class CameraUpdate(BaseModel):
+    location_name: Optional[str] = None
+    stream_url: Optional[str] = None
+    status: Optional[CameraStatus] = None

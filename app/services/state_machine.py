@@ -58,6 +58,7 @@ class IncidentManager:
             has_helmet = any(is_ppe_on_person(h["box"], person_box) for h in helmets)
             has_vest = any(is_ppe_on_person(v["box"], person_box) for v in vests)
 
+
             has_ppe = has_helmet and has_vest
 
             person_state_obj = self.trackers[track_id]
