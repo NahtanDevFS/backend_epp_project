@@ -4,9 +4,9 @@ import numpy as np
 class PPEDetector:
     def __init__(self):
         self.model = YOLO("best.pt")
+        self.allowed_classes = {"helmet", "nohelmet", "vest", "novest"}
 
     def detect_objects(self, frame: np.ndarray):
-
         results = self.model.track(frame, persist=True, tracker="bytetrack.yaml", verbose=False)
 
         detections = []
@@ -25,9 +25,12 @@ class PPEDetector:
                 track_ids = [0] * len(boxes)
 
             for track_id, box, cls, conf in zip(track_ids, boxes, clss, confs):
-                if conf > 0.3:
+                if conf > 0.4:
                     raw_class_name = self.model.names[cls]
                     normalized_class_name = raw_class_name.lower()
+
+                    if normalized_class_name not in self.allowed_classes:
+                        continue
 
                     detections.append({
                         "track_id": track_id,

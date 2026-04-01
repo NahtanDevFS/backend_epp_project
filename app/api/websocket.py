@@ -22,7 +22,6 @@ os.makedirs("static/evidences", exist_ok=True)
 
 router = APIRouter()
 
-
 class ThreadedCamera:
     def __init__(self, src):
         self.cap = cv2.VideoCapture(src)
@@ -142,11 +141,13 @@ async def video_stream_endpoint(websocket: WebSocket, camera_id: UUID, token: st
                         y2 = int(y_center + (h * 6.0))
                         x1 = int(x_center - (w * 3.0))
                         x2 = int(x_center + (w * 3.0))
-                    else:
+                    elif det["class_name"] == "novest":
                         y1 = int(y_center - (h * 1.2))
                         y2 = int(y_center + (h * 2.0))
                         x1 = int(x_center - (w * 1.5))
                         x2 = int(x_center + (w * 1.5))
+                    else:
+                        y1, y2, x1, x2 = 0, orig_height, 0, orig_width
 
                     x1 = max(0, x1)
                     y1 = max(0, y1)
@@ -156,7 +157,6 @@ async def video_stream_endpoint(websocket: WebSocket, camera_id: UUID, token: st
                     cropped_frame = frame[y1:y2, x1:x2].copy()
 
                     if cropped_frame.size > 0:
-
                         box_x1_orig = int(x_center - w / 2)
                         box_y1_orig = int(y_center - h / 2)
                         box_x2_orig = int(x_center + w / 2)
@@ -168,7 +168,6 @@ async def video_stream_endpoint(websocket: WebSocket, camera_id: UUID, token: st
                         box_y2 = box_y2_orig - y1
 
                         color = (0, 0, 255)
-
                         cv2.rectangle(cropped_frame, (box_x1, box_y1), (box_x2, box_y2), color, 2)
 
                         label = "FALTA CASCO" if det["class_name"] == "nohelmet" else "FALTA CHALECO"

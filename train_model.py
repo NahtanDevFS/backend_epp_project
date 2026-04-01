@@ -6,7 +6,8 @@ def train_ppe_model():
     print("Iniciando preparación del modelo...")
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    yaml_path = os.path.join(current_dir, "datasets", "Construction Site Safety.v28-yolov5s.yolov11", "data.yaml")
+    yaml_path = os.path.join(current_dir, "datasets", "20250731-ppe2286y", "data.yaml")
+
     model = YOLO("yolo11n.pt")
 
     print("Iniciando entrenamiento en la RTX 2060...")
