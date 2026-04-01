@@ -15,7 +15,8 @@ from uuid import UUID
 from app.db.database import SessionLocal
 from app.crud import alert as crud_alert
 from app.schemas.alert import AlertCreate, AlertDetailCreate
-from app.db.models import AlertStatus, EPPClass, Camera
+from app.db.models import AlertStatus, EPPClass, Camera, User
+from app.services.email import send_alert_email
 
 os.makedirs("static/evidences", exist_ok=True)
 
@@ -130,19 +131,54 @@ async def video_stream_endpoint(websocket: WebSocket, camera_id: UUID, token: st
             scale_y = 480 / orig_height
 
             for det in processed_detections:
-                x, y, w, h = det["box"]
-                det["box"] = [
-                    round(x * scale_x, 2),
-                    round(y * scale_y, 2),
-                    round(w * scale_x, 2),
-                    round(h * scale_y, 2)
-                ]
+                x_center, y_center, w, h = det["box"]
 
                 if det.get("trigger_alert") and camera:
                     filename = f"{uuid.uuid4()}.jpg"
                     filepath = os.path.join("static/evidences", filename)
 
-                    await asyncio.to_thread(cv2.imwrite, filepath, frame)
+                    if det["class_name"] == "nohelmet":
+                        y1 = int(y_center - (h * 1.5))
+                        y2 = int(y_center + (h * 6.0))
+                        x1 = int(x_center - (w * 3.0))
+                        x2 = int(x_center + (w * 3.0))
+                    else:
+                        y1 = int(y_center - (h * 1.2))
+                        y2 = int(y_center + (h * 2.0))
+                        x1 = int(x_center - (w * 1.5))
+                        x2 = int(x_center + (w * 1.5))
+
+                    x1 = max(0, x1)
+                    y1 = max(0, y1)
+                    x2 = min(orig_width, x2)
+                    y2 = min(orig_height, y2)
+
+                    cropped_frame = frame[y1:y2, x1:x2].copy()
+
+                    if cropped_frame.size > 0:
+
+                        box_x1_orig = int(x_center - w / 2)
+                        box_y1_orig = int(y_center - h / 2)
+                        box_x2_orig = int(x_center + w / 2)
+                        box_y2_orig = int(y_center + h / 2)
+
+                        box_x1 = box_x1_orig - x1
+                        box_y1 = box_y1_orig - y1
+                        box_x2 = box_x2_orig - x1
+                        box_y2 = box_y2_orig - y1
+
+                        color = (0, 0, 255)
+
+                        cv2.rectangle(cropped_frame, (box_x1, box_y1), (box_x2, box_y2), color, 2)
+
+                        label = "FALTA CASCO" if det["class_name"] == "nohelmet" else "FALTA CHALECO"
+                        text_y = max(20, box_y1 - 10)
+                        cv2.putText(cropped_frame, label, (box_x1, text_y),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+
+                        await asyncio.to_thread(cv2.imwrite, filepath, cropped_frame)
+                    else:
+                        await asyncio.to_thread(cv2.imwrite, filepath, frame)
 
                     missing_details = []
                     if det["missing_epp"]["helmet"]:
@@ -158,6 +194,26 @@ async def video_stream_endpoint(websocket: WebSocket, camera_id: UUID, token: st
                         details=missing_details
                     )
                     crud_alert.create_alert(db=db, alert=alert_data)
+
+                    supervisor = db.query(User).filter(User.username == username).first()
+
+                    if supervisor and supervisor.email:
+                        asyncio.create_task(
+                            asyncio.to_thread(
+                                send_alert_email,
+                                destinatario=supervisor.email,
+                                camera_location=camera.location_name,
+                                missing_helmet=det["missing_epp"]["helmet"],
+                                missing_vest=det["missing_epp"]["vest"]
+                            )
+                        )
+
+                det["box"] = [
+                    round(x_center * scale_x, 2),
+                    round(y_center * scale_y, 2),
+                    round(w * scale_x, 2),
+                    round(h * scale_y, 2)
+                ]
 
             frame_resized = cv2.resize(frame, (640, 480))
             _, buffer = cv2.imencode('.jpg', frame_resized, [cv2.IMWRITE_JPEG_QUALITY, 50])

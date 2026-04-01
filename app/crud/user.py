@@ -13,6 +13,7 @@ def create_user(db: Session, user: UserCreate):
 
     db_user = User(
         username=user.username,
+        email=user.email,
         role=user.role,
         password_hash=hashed_password
     )
