@@ -29,7 +29,6 @@ os.makedirs("static/evidences", exist_ok=True)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Incluimos las rutas
 app.include_router(auth.router)
 app.include_router(websocket.router)
 app.include_router(cameras.router)
