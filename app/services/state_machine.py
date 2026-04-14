@@ -8,11 +8,13 @@ class InfractionState:
         self.class_name = class_name
         self.state = "advertencia"
         self.first_seen_time = time.time()
+        self.last_seen_time = self.first_seen_time  #guardamos la última vez que fue visto
         self.TIME_THRESHOLD = 10.0
         self.alert_saved = False
 
     def update(self) -> str:
         current_time = time.time()
+        self.last_seen_time = current_time  #actualizamos el tiempo en cada frame detectado
         elapsed_time = current_time - self.first_seen_time
 
         if elapsed_time >= self.TIME_THRESHOLD:
@@ -24,6 +26,7 @@ class InfractionState:
 class IncidentManager:
     def __init__(self):
         self.trackers: Dict[int, InfractionState] = {}
+        self.grace_period = 5.0  #tiempo de gracia en segundos antes de olvidar al infractor
 
     def _boxes_overlap(self, box1: list, box2: list, threshold=0.5) -> bool:
         x1_c, y1_c, w1, h1 = box1
@@ -113,7 +116,18 @@ class IncidentManager:
 
             processed_results.append(det)
 
-        ids_to_remove = [tid for tid in self.trackers if tid not in current_ids]
+        #lógica de limpieza con paciencia
+        current_time = time.time()
+        ids_to_remove = []
+
+        for tid, state in self.trackers.items():
+            # Si el track_id no está en este frame, evaluamos cuánto tiempo ha pasado
+            if tid not in current_ids:
+                time_unseen = current_time - state.last_seen_time
+                if time_unseen > self.grace_period:
+                    ids_to_remove.append(tid)
+
+        #borramos únicamente a los que superaron el tiempo de gracia
         for tid in ids_to_remove:
             del self.trackers[tid]
 
