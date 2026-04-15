@@ -136,19 +136,14 @@ async def video_stream_endpoint(websocket: WebSocket, camera_id: UUID, token: st
                     filename = f"{uuid.uuid4()}.jpg"
                     filepath = os.path.join("static/evidences", filename)
 
-                    if det["class_name"] == "nohelmet":
-                        y1 = int(y_center - (h * 1.5))
-                        y2 = int(y_center + (h * 6.0))
-                        x1 = int(x_center - (w * 3.0))
-                        x2 = int(x_center + (w * 3.0))
-                    elif det["class_name"] == "novest":
-                        y1 = int(y_center - (h * 1.2))
-                        y2 = int(y_center + (h * 2.0))
-                        x1 = int(x_center - (w * 1.5))
-                        x2 = int(x_center + (w * 1.5))
-                    else:
-                        y1, y2, x1, x2 = 0, orig_height, 0, orig_width
+                    #lógica de recorte cuerpo completo + padding
+                    padding = 50  #píxeles extra para que se vea el contexto alrededor
+                    y1 = int(y_center - (h / 2)) - padding
+                    y2 = int(y_center + (h / 2)) + padding
+                    x1 = int(x_center - (w / 2)) - padding
+                    x2 = int(x_center + (w / 2)) + padding
 
+                    #asegurar que las coordenadas no salgan del tamaño de la imagen
                     x1 = max(0, x1)
                     y1 = max(0, y1)
                     x2 = min(orig_width, x2)
@@ -157,6 +152,7 @@ async def video_stream_endpoint(websocket: WebSocket, camera_id: UUID, token: st
                     cropped_frame = frame[y1:y2, x1:x2].copy()
 
                     if cropped_frame.size > 0:
+                        #calcular coordenadas de la caja relativas al recorte
                         box_x1_orig = int(x_center - w / 2)
                         box_y1_orig = int(y_center - h / 2)
                         box_x2_orig = int(x_center + w / 2)
@@ -167,10 +163,16 @@ async def video_stream_endpoint(websocket: WebSocket, camera_id: UUID, token: st
                         box_x2 = box_x2_orig - x1
                         box_y2 = box_y2_orig - y1
 
-                        color = (0, 0, 255)
+                        color = (0, 0, 255)  #rojo
                         cv2.rectangle(cropped_frame, (box_x1, box_y1), (box_x2, box_y2), color, 2)
 
-                        label = "FALTA CASCO" if det["class_name"] == "nohelmet" else "FALTA CHALECO"
+                        if det["class_name"] == "unsafe":
+                            label = "SIN CASCO NI CHALECO"
+                        elif det["class_name"] == "no helmet":
+                            label = "FALTA CASCO"
+                        else:
+                            label = "FALTA CHALECO"
+
                         text_y = max(20, box_y1 - 10)
                         cv2.putText(cropped_frame, label, (box_x1, text_y),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)

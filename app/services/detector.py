@@ -7,7 +7,8 @@ class PPEDetector:
         self.allowed_classes = {"safe", "unsafe", "no helmet", "no jacket"}
 
     def detect_objects(self, frame: np.ndarray):
-        results = self.model.track(frame, persist=True, tracker="bytetrack.yaml", verbose=False)
+        #agnostic_nms=True permite dejar solo la caja delimitadora de mayor confianza
+        results = self.model.track(frame, persist=True, tracker="bytetrack.yaml", verbose=False, conf=0.45, iou=0.45, agnostic_nms=True)
 
         detections = []
 
