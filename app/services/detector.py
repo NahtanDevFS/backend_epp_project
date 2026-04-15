@@ -4,7 +4,7 @@ import numpy as np
 class PPEDetector:
     def __init__(self):
         self.model = YOLO("best.pt")
-        self.allowed_classes = {"helmet", "nohelmet", "vest", "novest"}
+        self.allowed_classes = {"safe", "unsafe", "no helmet", "no jacket"}
 
     def detect_objects(self, frame: np.ndarray):
         results = self.model.track(frame, persist=True, tracker="bytetrack.yaml", verbose=False)
