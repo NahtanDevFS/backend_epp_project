@@ -104,6 +104,10 @@ async def video_stream_endpoint(websocket: WebSocket, camera_id: UUID, token: st
     ppe_detector = PPEDetector()
     incident_manager = IncidentManager()
 
+    target_fps = 10  #limitar el envío a 12 FPS
+    frame_interval = 1.0 / target_fps
+    last_send_time = time.time()
+
     try:
         while True:
             ret, frame = cap.read()
@@ -220,15 +224,25 @@ async def video_stream_endpoint(websocket: WebSocket, camera_id: UUID, token: st
             _, buffer = cv2.imencode('.jpg', frame_resized, [cv2.IMWRITE_JPEG_QUALITY, 50])
             base64_image = base64.b64encode(buffer).decode('utf-8')
 
-            process_time = (time.time() - start_time) * 1000
+            current_time = time.time()
+            #solo codificar y enviar si ha pasado el tiempo necesario (1/12 de segundo)
+            if (current_time - last_send_time) >= frame_interval:
+                frame_resized = cv2.resize(frame, (640, 480))
+                #baja la calidad JPEG de 50 a 35
+                _, buffer = cv2.imencode('.jpg', frame_resized, [cv2.IMWRITE_JPEG_QUALITY, 35])
+                base64_image = base64.b64encode(buffer).decode('utf-8')
 
-            await websocket.send_json({
-                "status": "success",
-                "resolution": "640x480",
-                "process_time_ms": round(process_time, 2),
-                "detections": processed_detections,
-                "image": base64_image
-            })
+                process_time = (time.time() - start_time) * 1000
+
+                await websocket.send_json({
+                    "status": "success",
+                    "resolution": "640x480",
+                    "process_time_ms": round(process_time, 2),
+                    "detections": processed_detections,
+                    "image": base64_image
+                })
+
+                last_send_time = time.time()
 
             await asyncio.sleep(0.001)
 

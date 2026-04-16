@@ -8,7 +8,7 @@ class PPEDetector:
 
     def detect_objects(self, frame: np.ndarray):
         #agnostic_nms=True permite dejar solo la caja delimitadora de mayor confianza
-        results = self.model.track(frame, persist=True, tracker="bytetrack.yaml", verbose=False, conf=0.45, iou=0.45, agnostic_nms=True)
+        results = self.model.track(frame, persist=True, tracker="bytetrack.yaml", verbose=False, conf=0.4, iou=0.45, agnostic_nms=True)
 
         detections = []
 
