@@ -104,7 +104,7 @@ async def video_stream_endpoint(websocket: WebSocket, camera_id: UUID, token: st
     ppe_detector = PPEDetector()
     incident_manager = IncidentManager()
 
-    target_fps = 10  #limitar el envío a 12 FPS
+    target_fps = 10  #limitar el envío a 10 FPS
     frame_interval = 1.0 / target_fps
     last_send_time = time.time()
 
