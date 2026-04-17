@@ -27,7 +27,6 @@ class IncidentManager:
         self.grace_period = 5.0
 
     def process_frame_detections(self, raw_detections: List[dict]) -> List[dict]:
-        # Ya no hay conflictos que resolver, el modelo nos da la clase directa de la persona
         detections = raw_detections
         processed_results = []
         current_ids = set()
@@ -36,7 +35,7 @@ class IncidentManager:
             class_name = det["class_name"]
             track_id = det.get("track_id")
 
-            # Si no hay track_id, no podemos hacer seguimiento en el tiempo
+            #si no hay track_id, no podemos hacer seguimiento en el tiempo
             if track_id is None or track_id == 0:
                 det["status"] = "epp_detectado" if class_name == "safe" else "advertencia"
                 det["trigger_alert"] = False
