@@ -43,7 +43,7 @@ class IncidentManager:
                 processed_results.append(det)
                 continue
 
-            # Clases de infracción
+            #clases de infracción
             if class_name in ["unsafe", "no helmet", "no jacket"]:
                 current_ids.add(track_id)
 
@@ -51,7 +51,7 @@ class IncidentManager:
                     self.trackers[track_id] = InfractionState(track_id, class_name)
 
                 state_obj = self.trackers[track_id]
-                # Actualizamos la clase por si el modelo detectó un cambio (ej. se quitó el casco de repente)
+                #actualiza la clase por si el modelo detectó un cambio
                 state_obj.class_name = class_name
                 current_state = state_obj.update()
 
@@ -64,13 +64,13 @@ class IncidentManager:
                 det["status"] = current_state
                 det["trigger_alert"] = trigger_db_alert
 
-                # Mapeo directo para la Base de Datos (schemas/alert.py)
+                #mapeo directo para la base de datos
                 det["missing_epp"] = {
                     "helmet": class_name in ["no helmet", "unsafe"],
                     "vest": class_name in ["no jacket", "unsafe"]
                 }
 
-            # Trabajador cumple con el equipo
+            #trabajador cumple con el equipo
             elif class_name == "safe":
                 det["status"] = "epp_detectado"
                 det["trigger_alert"] = False
