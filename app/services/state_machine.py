@@ -11,6 +11,30 @@ class InfractionState:
         self.TIME_THRESHOLD = 10.0
         self.alert_saved = False
 
+        self.safe_since = None          #momento en que empezó a verse como safe
+        self.SAFE_RESET_THRESHOLD = 5.0
+
+    def register_safe(self) -> bool:
+        current_time = time.time()
+
+        if self.safe_since is None:
+            self.safe_since = current_time
+            return False
+
+        elapsed_safe = current_time - self.safe_since
+        if elapsed_safe >= self.SAFE_RESET_THRESHOLD:
+            return True  # listo para resetear
+
+        return False
+
+    def reset(self):
+        """Reinicia el estado como si fuera una persona nueva."""
+        self.state = "advertencia"
+        self.first_seen_time = time.time()
+        self.last_seen_time = self.first_seen_time
+        self.alert_saved = False
+        self.safe_since = None
+
     def update(self) -> str:
         current_time = time.time()
         self.last_seen_time = current_time
@@ -69,8 +93,23 @@ class IncidentManager:
                     "vest": class_name in ["no jacket", "unsafe"]
                 }
 
+                if track_id in self.trackers:
+                    self.trackers[track_id].safe_since = None
+
             #trabajador cumple con el equipo
             elif class_name == "safe":
+                if track_id and track_id in self.trackers:
+                    state_obj = self.trackers[track_id]
+                    should_reset = state_obj.register_safe()
+
+                    if should_reset:
+                        del self.trackers[track_id]  #elimina el tracker próxima infracción empieza de cero
+                        print(f"Track {track_id} reseteado tras cumplir EPP por {state_obj.SAFE_RESET_THRESHOLD}s")
+                else:
+                    #persona safe sin historial previo, no hay nada que resetear
+                    if track_id and track_id in self.trackers:
+                        self.trackers[track_id].safe_since = None  #interrumpió el EPP, reinicia contador safe
+
                 det["status"] = "epp_detectado"
                 det["trigger_alert"] = False
 
