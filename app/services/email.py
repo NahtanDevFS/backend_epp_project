@@ -10,7 +10,7 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "llmahbsguklrdcwj")
 def send_alert_email(destinatario: str, camera_location: str, missing_helmet: bool, missing_vest: bool):
     try:
         msg = EmailMessage()
-        msg['Subject'] = f'⚠ALERTA DE SEGURIDAD - {camera_location}'
+        msg['Subject'] = f'ALERTA DE SEGURIDAD - {camera_location}'
         msg['From'] = SMTP_USER
         msg['To'] = destinatario
 
