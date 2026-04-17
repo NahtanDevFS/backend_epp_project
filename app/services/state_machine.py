@@ -76,7 +76,7 @@ class IncidentManager:
 
             processed_results.append(det)
 
-        # Lógica de limpieza con paciencia
+        #lógica de limpieza con paciencia
         current_time = time.time()
         ids_to_remove = []
 
